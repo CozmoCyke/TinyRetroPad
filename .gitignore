@@ -1,0 +1,6 @@
+*.exe
+*.obj
+*.pdb
+*.log
+test_*.bat
+TRP_MEMORY_COMPARISON_REPORT.md
