@@ -15,6 +15,7 @@
 #define APP_TITLE L"TinyMagicoditorWeb - MagicodesPad"
 #define CLASS_NAME L"TinyMagicoditorWeb_Window"
 
+#define IDM_NEW    1000
 #define IDM_OPEN  1001
 #define IDM_SAVE  1002
 #define IDM_SAVEAS 1003
@@ -462,6 +463,20 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
 
         case WM_COMMAND:
             switch (LOWORD(wParam)) {
+                case IDM_NEW:
+                    if (g_textChanged) {
+                        int r = MessageBoxW(hwnd, L"Save changes?", APP_TITLE,
+                                            MB_YESNOCANCEL | MB_ICONQUESTION);
+                        if (r == IDCANCEL) break;
+                        if (r == IDYES) SaveCurrentFile();
+                    }
+                    if (g_currentText) free(g_currentText);
+                    g_currentText = _wcsdup(L"");
+                    if (g_filePath) { free(g_filePath); g_filePath = NULL; }
+                    SetWindowTextW(hwnd, APP_TITLE);
+                    g_textChanged = 0;
+                    if (g_webviewReady) UpdateWebViewContent();
+                    break;
                 case IDM_OPEN: {
                     wchar_t path[MAX_PATH] = {0};
                     OPENFILENAMEW ofn = {sizeof(ofn)};
@@ -521,7 +536,19 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
             break;
 
         case WM_KEYDOWN:
-            if (wParam == VK_F2) {
+            if (GetKeyState(VK_CONTROL) & 0x8000) {
+                switch (wParam) {
+                    case 'N':
+                        PostMessageW(hwnd, WM_COMMAND, IDM_NEW, 0);
+                        break;
+                    case 'O':
+                        PostMessageW(hwnd, WM_COMMAND, IDM_OPEN, 0);
+                        break;
+                    case 'S':
+                        PostMessageW(hwnd, WM_COMMAND, IDM_SAVE, 0);
+                        break;
+                }
+            } else if (wParam == VK_F2) {
                 g_qrPreview = !g_qrPreview;
                 CheckMenuItem(GetMenu(hwnd), IDM_QRPREVIEW,
                     MF_BYCOMMAND | (g_qrPreview ? MF_CHECKED : MF_UNCHECKED));
@@ -580,7 +607,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
     HMENU hMenu = CreateMenu();
     HMENU hFile = CreateMenu();
+    AppendMenuW(hFile, MF_STRING, IDM_NEW, L"&New\tCtrl+N");
     AppendMenuW(hFile, MF_STRING, IDM_OPEN, L"&Open\tCtrl+O");
+    AppendMenuW(hFile, MF_SEPARATOR, 0, NULL);
     AppendMenuW(hFile, MF_STRING, IDM_SAVE, L"&Save\tCtrl+S");
     AppendMenuW(hFile, MF_STRING, IDM_SAVEAS, L"Save &As...");
     AppendMenuW(hFile, MF_SEPARATOR, 0, NULL);
